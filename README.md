@@ -49,7 +49,8 @@ gitops-demo/
 ```bash
 cd ~/Desktop/gitops-demo
 git init && git add . && git commit -m "initial gitops structure"
-gh repo create gitops-demo --public --source=. --push
+git remote add origin https://github.com/gehlotvishnu/gitops-demos.git
+git push -u origin main
 ```
 
 ### 2. Update repo URLs

@@ -2,7 +2,7 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/YOUR_ORG/spring-boot-demo
+  repository: ghcr.io/gehlotvishnu/spring-boot-demo
   tag: "1.0.0"         # Prod only gets promoted stable tags (never "latest")
 
 resources:

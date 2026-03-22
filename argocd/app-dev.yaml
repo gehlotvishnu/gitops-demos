@@ -10,7 +10,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR_ORG/gitops-demo.git
+    repoURL: https://github.com/gehlotvishnu/gitops-demos.git
     targetRevision: main
     path: charts/spring-boot-app
     helm:

@@ -2,7 +2,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/YOUR_ORG/spring-boot-demo
+  repository: ghcr.io/gehlotvishnu/spring-boot-demo
   tag: "latest"        # CI updates this: yq -i '.image.tag = "1.2.3-abc1234"' envs/dev/values.yaml
 
 resources:

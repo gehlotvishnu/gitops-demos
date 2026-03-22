@@ -3,7 +3,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/YOUR_ORG/spring-boot-demo
+  repository: ghcr.io/gehlotvishnu/spring-boot-demo
   tag: "latest"       # CI pipeline updates this per commit (e.g. "1.2.3-abc1234")
   pullPolicy: IfNotPresent
 
