@@ -38,7 +38,7 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: false
 {{- if .Values.autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2
