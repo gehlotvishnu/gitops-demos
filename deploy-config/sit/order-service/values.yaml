@@ -1,0 +1,17 @@
+# ── DEPLOY CONFIG  (Ops team) ── order-service / sit ────────
+replicaCount: 1
+
+image:
+  repository: ghcr.io/gehlotvishnu/order-service
+  tag: "1.1.0-sit"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false

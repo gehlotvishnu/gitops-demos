@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: order-service-prod
+  namespace: openshift-gitops
+  labels:
+    app: order-service
+    environment: prod
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
+      targetRevision: main
+      path: charts/order-service
+      helm:
+        releaseName: order-service
+        valueFiles:
+          - $gitops-config/deploy-config/prod/order-service/values.yaml
+    - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
+      targetRevision: main
+      ref: gitops-config
+    - repoURL: https://github.com/gehlotvishnu/spring-boot-config.git
+      targetRevision: main
+      path: app-config/prod/order-service
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: order-service-prod
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

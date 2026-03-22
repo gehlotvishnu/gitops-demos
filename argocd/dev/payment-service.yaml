@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: payment-service-dev
+  namespace: openshift-gitops
+  labels:
+    app: payment-service
+    environment: dev
+spec:
+  project: default
+  sources:
+    # ── Source 1: Helm chart (gitops-demos) ──────────────────────────────────
+    # Path: charts/payment-service
+    # Values: deploy-config/dev/payment-service/values.yaml (Ops team)
+    - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
+      targetRevision: main
+      path: charts/payment-service
+      helm:
+        releaseName: payment-service
+        valueFiles:
+          - $gitops-config/deploy-config/dev/payment-service/values.yaml
+
+    # ── Source 2: gitops-demos ref (resolves $gitops-config above) ───────────
+    - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
+      targetRevision: main
+      ref: gitops-config
+
+    # ── Source 3: spring-boot-config repo (Dev team) ─────────────────────────
+    # Applies: app-config/dev/payment-service/configmap.yaml
+    # Contains ConfigMap with application.properties content
+    - repoURL: https://github.com/gehlotvishnu/spring-boot-config.git
+      targetRevision: main
+      path: app-config/dev/payment-service
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: payment-service-dev
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m

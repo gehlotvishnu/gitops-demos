@@ -1,128 +1,163 @@
-# gitops-demo — Config Repo (ArgoCD Watches This)
+# gitops-demos  —  Helm Charts + Deploy Config  (Ops team repo)
 
-## Two-Repo GitOps Pattern
-
-```
-┌─────────────────────────┐     CI/CD      ┌───────────────────────────┐
-│   APP REPO              │   ─────────►   │   CONFIG REPO (this repo) │
-│   spring-boot-demo      │   image push   │   gitops-demo             │
-│   - Java source         │   + tag update │   - Helm chart            │
-│   - Dockerfile          │               │   - env values (dev/prod) │
-│   - GitHub Actions CI   │               │   - ArgoCD Applications   │
-└─────────────────────────┘               └───────────┬───────────────┘
-                                                       │ ArgoCD polls
-                                                       ▼
-                                          ┌────────────────────────┐
-                                          │   OpenShift (CRC)      │
-                                          │   spring-boot-dev ns   │
-                                          │   spring-boot-prod ns  │
-                                          └────────────────────────┘
-```
-
-## Repo Structure
+## Architecture: 3-Repo GitOps Pattern
 
 ```
-gitops-demo/
+┌──────────────────────┐   push + tag   ┌───────────────────────────────────────┐
+│  APP REPO            │ ─────────────► │  gitops-demos  (THIS REPO)            │
+│  payment-service     │  CI updates    │  Helm charts + deploy-values          │
+│  order-service       │  image tag     │  Owned by: Platform / Ops team        │
+│  - Java source       │               └───────────┬───────────────────────────┘
+│  - Dockerfile        │                           │  ArgoCD multi-source
+│  - GitHub Actions CI │               ┌───────────┘  (both repos)
+└──────────────────────┘               │
+                                       │           ┌───────────────────────────────┐
+                        ┌──────────────┘           │  spring-boot-config           │
+                        │  ArgoCD watches both     │  application.properties       │
+                        ▼                          │  Owned by: Dev / App team     │
+             ┌──────────────────────┐              └───────────────────────────────┘
+             │  OpenShift (CRC)     │
+             │  payment-service-dev │
+             │  order-service-dev   │
+             │  payment-service-sit │
+             │  order-service-sit   │
+             │  *-prod (manual)     │
+             └──────────────────────┘
+```
+
+## Repo Responsibilities
+
+| Repo | Owner | Contains | Change triggers |
+|------|-------|----------|-----------------|
+| `gitops-demos` | Ops/Platform | Helm chart templates, deploy-values (replicas, image, resources) | Ops PRs |
+| `spring-boot-config` | Dev/App team | `application.properties` per service per env | Dev PRs |
+| `payment-service` | App team | Java source, Dockerfile, CI | Feature branches |
+
+## Directory Structure
+
+```
+gitops-demos/
 ├── charts/
-│   └── spring-boot-app/          ← Reusable Helm chart
+│   └── spring-boot-app/              ← Reusable Helm chart (all services use this)
 │       ├── Chart.yaml
-│       ├── values.yaml           ← Defaults
+│       ├── values.yaml               ← Chart defaults only
 │       └── templates/
 │           ├── namespace.yaml
-│           ├── configmap.yaml    ← Spring app.config via env vars
-│           ├── deployment.yaml
+│           ├── configmap.yaml        ← Renders springConfig → application.properties
+│           ├── deployment.yaml       ← Mounts ConfigMap at /config/
 │           ├── service.yaml
-│           └── route.yaml        ← OpenShift Route (HTTPS)
+│           └── route.yaml
 ├── envs/
-│   ├── dev/values.yaml           ← Dev overrides (image tag updated by CI)
-│   └── prod/values.yaml          ← Prod overrides (manual promotion)
-├── argocd/
-│   ├── app-dev.yaml              ← ArgoCD Application (auto-sync)
-│   └── app-prod.yaml             ← ArgoCD Application (manual sync)
-└── .github/workflows/
-    └── update-image-tag.yml      ← Triggered by app repo CI
+│   ├── dev/
+│   │   ├── payment-service/deploy-values.yaml   ← replicas, image, resources
+│   │   └── order-service/deploy-values.yaml
+│   ├── sit/
+│   │   ├── payment-service/deploy-values.yaml
+│   │   └── order-service/deploy-values.yaml
+│   └── prod/
+│       ├── payment-service/deploy-values.yaml
+│       └── order-service/deploy-values.yaml
+└── argocd/
+    ├── dev/
+    │   ├── payment-service.yaml      ← multi-source: chart + deploy-values + app-config
+    │   └── order-service.yaml
+    ├── sit/
+    │   ├── payment-service.yaml
+    │   └── order-service.yaml
+    └── prod/
+        ├── payment-service.yaml      ← manual sync (no auto-prune in prod)
+        └── order-service.yaml
+
+spring-boot-config/                   ← Separate repo
+├── dev/
+│   ├── payment-service/app-config.yaml   ← Spring properties as Helm values
+│   └── order-service/app-config.yaml
+├── sit/
+│   ├── payment-service/app-config.yaml
+│   └── order-service/app-config.yaml
+└── prod/
+    ├── payment-service/app-config.yaml
+    └── order-service/app-config.yaml
 ```
 
-## Setup
+## How spring-boot-config flows into the pod
 
-### 1. Create GitHub Repo
-```bash
-cd ~/Desktop/gitops-demo
-git init && git add . && git commit -m "initial gitops structure"
-git remote add origin https://github.com/gehlotvishnu/gitops-demos.git
-git push -u origin main
+```
+spring-boot-config/dev/payment-service/app-config.yaml
+    springConfig:
+      server.port: "8080"
+      payment.gateway.url: https://sandbox.payment-gateway.io
+      ...
+         │
+         │  ArgoCD multi-source merges with deploy-values.yaml
+         ▼
+    Helm renders → ConfigMap (application.properties)
+         │
+         │  Deployment mounts ConfigMap as volume
+         ▼
+    /config/application.properties  (inside pod)
+         │
+         │  Spring Boot auto-discovers /config/ location
+         ▼
+    app reads server.port, gateway URL, feature flags, etc.
 ```
 
-### 2. Update repo URLs
-Replace `YOUR_ORG` in:
-- `argocd/app-dev.yaml`
-- `argocd/app-prod.yaml`
-- `envs/dev/values.yaml`
-- `envs/prod/values.yaml`
+## Applying ArgoCD Applications
 
-### 3. Apply ArgoCD Applications
 ```bash
 eval $(~/local/bin/crc oc-env)
 oc login -u kubeadmin -p '5SkgS-KHtGB-Xp7zJ-9hnef' https://api.crc.testing:6443 --insecure-skip-tls-verify
-oc apply -f argocd/app-dev.yaml
-# Prod apply after verifying dev:
-# oc apply -f argocd/app-prod.yaml
+
+# Dev (auto-sync)
+oc apply -f argocd/dev/
+
+# SIT (auto-sync)
+oc apply -f argocd/sit/
+
+# Prod (manual sync only)
+oc apply -f argocd/prod/
 ```
 
-### 4. Access ArgoCD UI
+## GitOps Workflows
+
+### Dev team changes app config (e.g. enable a feature flag)
+```bash
+# In spring-boot-config repo:
+vi dev/payment-service/app-config.yaml
+# change: payment.feature.upi-enabled: "false" → "true"
+git commit -am "enable UPI in dev" && git push
+# ArgoCD detects diff → updates ConfigMap → pod restarts with new config
+```
+
+### Ops team scales up for load test
+```bash
+# In gitops-demos repo:
+vi envs/sit/payment-service/deploy-values.yaml
+# change: replicaCount: 1 → replicaCount: 3
+git commit -am "scale payment-service sit to 3 for load test" && git push
+# ArgoCD syncs → Deployment scales to 3 pods
+```
+
+### Promote dev image tag to SIT
+```bash
+# CI updates this automatically after a successful dev deploy:
+yq -i '.image.tag = "1.2.0-rc1"' envs/sit/payment-service/deploy-values.yaml
+git commit -am "chore(sit): promote payment-service to 1.2.0-rc1"
+git push
+```
+
+### Promote SIT to prod (manual gate)
+```bash
+# Update prod tag
+yq -i '.image.tag = "1.2.0"' envs/prod/payment-service/deploy-values.yaml
+git commit -am "chore(prod): release payment-service 1.2.0"
+git push
+# ArgoCD shows prod app as OutOfSync — requires manual sync approval
+# oc patch application payment-service-prod -n openshift-gitops \
+#   --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
+```
+
+## ArgoCD UI
 - URL: https://openshift-gitops-server-openshift-gitops.apps-crc.testing
 - Username: `admin`
 - Password: `oc extract secret/openshift-gitops-cluster -n openshift-gitops --to=-`
-
-## GitOps Loop Demo
-
-### Demo: Scale Up (shows self-healing)
-```bash
-# 1. Edit config repo
-sed -i 's/replicaCount: 1/replicaCount: 2/' envs/dev/values.yaml
-git commit -am "scale dev to 2 replicas"
-git push
-
-# 2. ArgoCD detects diff (within 3 min) and syncs
-# 3. Try manually scaling down in cluster — ArgoCD will revert it (selfHeal: true)
-oc scale deployment spring-boot-demo -n spring-boot-dev --replicas=0
-# Watch ArgoCD bring it back to 2
-```
-
-### Demo: Image Update (simulates CI push)
-```bash
-yq -i '.image.tag = "1.2.0-abc1234"' envs/dev/values.yaml
-git commit -am "chore(dev): update image tag to 1.2.0-abc1234"
-git push
-# ArgoCD rolls out new image with zero-downtime rolling update
-```
-
-### Demo: Config Change (shows app config management)
-```bash
-yq -i '.appConfig.LOG_LEVEL = "TRACE"' envs/dev/values.yaml
-git commit -am "enable trace logging in dev"
-git push
-# ArgoCD updates ConfigMap and triggers pod restart
-```
-
-### Demo: Prod Promotion (shows manual gate)
-```bash
-# 1. Test passed in dev — promote same tag to prod
-NEW_TAG=$(yq '.image.tag' envs/dev/values.yaml)
-yq -i ".image.tag = \"$NEW_TAG\"" envs/prod/values.yaml
-git commit -am "promote $NEW_TAG to prod"
-git push
-# 2. ArgoCD shows prod as OutOfSync (no auto-sync in prod)
-# 3. Manual sync via UI or:
-# argocd app sync spring-boot-demo-prod
-```
-
-## Key GitOps Principles Demonstrated
-| Principle | How |
-|-----------|-----|
-| **Declarative** | All state in YAML, not imperative kubectl |
-| **Versioned** | Git is the single source of truth |
-| **Pull-based** | ArgoCD pulls from Git (vs CI push to cluster) |
-| **Self-healing** | `selfHeal: true` reverts manual cluster changes |
-| **Env parity** | Same chart, different values per env |
-| **Separation of concerns** | App code ≠ deployment config |
