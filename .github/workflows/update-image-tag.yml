@@ -1,0 +1,46 @@
+# This workflow lives in the CONFIG repo (gitops-demo).
+# It is triggered by the APP repo's CI after a successful image build.
+#
+# Full GitOps loop:
+#   [App Repo] push code
+#       → GitHub Actions: build JAR → docker build → push to GHCR
+#       → Dispatch this workflow with new image tag
+#           → yq updates envs/dev/values.yaml image.tag
+#           → git commit + push
+#               → ArgoCD detects diff → auto-syncs dev namespace
+#               → (manual approval) → ArgoCD syncs prod namespace
+
+name: Update Image Tag
+
+on:
+  repository_dispatch:
+    types: [image-updated]
+
+jobs:
+  update-dev:
+    name: Update dev image tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update dev image tag
+        run: |
+          NEW_TAG="${{ github.event.client_payload.image_tag }}"
+          echo "Updating dev to image tag: $NEW_TAG"
+          yq -i ".image.tag = \"$NEW_TAG\"" envs/dev/values.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add envs/dev/values.yaml
+          git commit -m "chore(dev): update image tag to ${{ github.event.client_payload.image_tag }}"
+          git push

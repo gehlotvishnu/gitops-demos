@@ -1,0 +1,54 @@
+# Default values — override per environment in envs/<env>/values.yaml
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/YOUR_ORG/spring-boot-demo
+  tag: "latest"       # CI pipeline updates this per commit (e.g. "1.2.3-abc1234")
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+route:
+  enabled: true
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Spring Boot app config — mounted as application.properties
+appConfig:
+  SPRING_PROFILES_ACTIVE: "default"
+  SERVER_PORT: "8080"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics"
+
+# Liveness / readiness via Spring Boot Actuator
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 20
+  periodSeconds: 5
+
+# Horizontal pod autoscaling
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
