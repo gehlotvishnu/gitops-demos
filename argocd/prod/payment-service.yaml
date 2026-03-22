@@ -16,12 +16,13 @@ spec:
         releaseName: payment-service
         valueFiles:
           - $gitops-config/deploy-config/prod/payment-service/values.yaml
+          - $app-config/app-config/prod/payment-service/values.yaml
     - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
       targetRevision: main
       ref: gitops-config
     - repoURL: https://github.com/gehlotvishnu/spring-boot-config.git
       targetRevision: main
-      path: app-config/prod/payment-service
+      ref: app-config
   destination:
     server: https://kubernetes.default.svc
     namespace: payment-service-prod

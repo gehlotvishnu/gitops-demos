@@ -16,12 +16,13 @@ spec:
         releaseName: order-service
         valueFiles:
           - $gitops-config/deploy-config/sit/order-service/values.yaml
+          - $app-config/app-config/sit/order-service/values.yaml
     - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
       targetRevision: main
       ref: gitops-config
     - repoURL: https://github.com/gehlotvishnu/spring-boot-config.git
       targetRevision: main
-      path: app-config/sit/order-service
+      ref: app-config
   destination:
     server: https://kubernetes.default.svc
     namespace: order-service-sit

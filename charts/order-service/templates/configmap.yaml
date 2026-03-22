@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-app-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    config.owner: app-team
+data:
+  # Rendered from: spring-boot-config/app-config/<env>/<service>/values.yaml → springConfig
+  application.properties: |
+{{ .Values.springConfig | indent 4 }}
