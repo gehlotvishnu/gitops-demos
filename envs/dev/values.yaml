@@ -7,10 +7,10 @@ image:
 
 resources:
   requests:
-    cpu: 50m
-    memory: 128Mi
+    cpu: 10m
+    memory: 1Mi    # Minimal request so it schedules on memory-constrained CRC
   limits:
-    cpu: 200m
+    cpu: 500m
     memory: 256Mi
 
 appConfig:
@@ -21,3 +21,18 @@ appConfig:
 
 autoscaling:
   enabled: false
+
+# Override probes for demo image (no actuator)
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
