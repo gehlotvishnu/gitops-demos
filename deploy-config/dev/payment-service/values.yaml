@@ -8,7 +8,7 @@ image:
 resources:
   requests:
     cpu: 10m
-    memory: 64Mi
+    memory: 1Mi    # CRC: request=1Mi to schedule; limit=512Mi gives JVM room; -Xmx200m caps heap
   limits:
     cpu: 300m
     memory: 512Mi
