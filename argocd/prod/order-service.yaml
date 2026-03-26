@@ -16,7 +16,7 @@ spec:
         releaseName: order-service
         valueFiles:
           - $gitops-config/deploy-config/prod/order-service/values.yaml
-          - $app-config/app-config/prod/order-service/values.yaml
+          - $app-config/app-config/prod/order-service/application.properties
     - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
       targetRevision: main
       ref: gitops-config

@@ -19,7 +19,7 @@ spec:
           # Ops team: replicas, image tag, resources
           - $gitops-config/deploy-config/dev/payment-service/values.yaml
           # Dev team: springConfig block → rendered to application.properties
-          - $app-config/app-config/dev/payment-service/values.yaml
+          - $app-config/app-config/dev/payment-service/application.properties
 
     # ── Source 2: ref for $gitops-config ─────────────────────
     - repoURL: https://github.com/gehlotvishnu/gitops-demos.git

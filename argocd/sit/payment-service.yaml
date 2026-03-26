@@ -16,7 +16,7 @@ spec:
         releaseName: payment-service
         valueFiles:
           - $gitops-config/deploy-config/sit/payment-service/values.yaml
-          - $app-config/app-config/sit/payment-service/values.yaml
+          - $app-config/app-config/sit/payment-service/application.properties
     - repoURL: https://github.com/gehlotvishnu/gitops-demos.git
       targetRevision: main
       ref: gitops-config
