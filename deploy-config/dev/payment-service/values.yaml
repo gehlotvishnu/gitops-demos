@@ -8,10 +8,12 @@ image:
 resources:
   requests:
     cpu: 10m
-    memory: 1Mi           # Minimal for CRC
+    memory: 256Mi
   limits:
     cpu: 300m
-    memory: 256Mi
+    memory: 512Mi
+
+javaOpts: "-Xmx200m -Xms128m"
 
 livenessProbe:
   httpGet:

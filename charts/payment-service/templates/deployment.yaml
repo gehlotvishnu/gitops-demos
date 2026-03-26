@@ -25,6 +25,9 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+          env:
+            - name: JAVA_OPTS
+              value: {{ .Values.javaOpts | default "-Xmx200m -Xms128m" | quote }}
           volumeMounts:
             - name: app-config
               mountPath: /config
