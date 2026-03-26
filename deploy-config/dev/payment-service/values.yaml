@@ -17,17 +17,19 @@ javaOpts: "-Xmx200m -Xms128m"
 
 livenessProbe:
   httpGet:
-    path: /
+    path: /payment
     port: 8080
-  initialDelaySeconds: 15
+  initialDelaySeconds: 45
   periodSeconds: 10
+  failureThreshold: 5
 
 readinessProbe:
   httpGet:
-    path: /
+    path: /payment
     port: 8080
-  initialDelaySeconds: 10
+  initialDelaySeconds: 30
   periodSeconds: 5
+  failureThreshold: 5
 
 autoscaling:
   enabled: false
